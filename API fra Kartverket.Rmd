@@ -1,0 +1,188 @@
+---
+jupyter:
+  jupytext:
+    text_representation:
+      extension: .Rmd
+      format_name: rmarkdown
+      format_version: '1.2'
+      jupytext_version: 1.13.6
+  kernelspec:
+    display_name: Python 3 (ipykernel)
+    language: python
+    name: python3
+---
+
+```{python}
+import requests
+import json
+import pandas as pd
+```
+
+```{python}
+response = requests.get("https://ws.geonorge.no/kommuneinfo/v1/fylker")
+
+if (response.status_code == 200):
+    print('Response code = ' + str(response.status_code) + '. OK')
+elif (response.status_code == 404):
+    print('Response code = ' + str(response.status_code) + '. NOT FOUND')
+```
+
+#### Using json libary, then we will get a list and not a dict. This will be easier to work with later.
+
+```{python}
+data = json.loads(response.text)
+data
+```
+
+```{python}
+type(data)
+```
+
+```{python}
+len(data)
+```
+
+```{python}
+fylke_6 = data[5]
+fylke_6
+```
+
+```{python}
+type(fylke_6)
+```
+
+```{python}
+fylkesnummer = []
+for i in range(len(data)):
+    nr = data[i].get('fylkesnummer')
+    fylkesnummer.append(nr)
+    
+```
+
+```{python}
+fylkesnummer
+```
+
+```{python}
+responses_flykesnummer = []
+
+for i in range(len(fylkesnummer)):
+    
+    response = requests.get('https://ws.geonorge.no/kommuneinfo/v1/fylker/' + fylkesnummer[i] + '/omrade')
+    data = json.loads(response.text)
+    responses_flykesnummer.append(data)
+```
+
+```{python}
+responses_flykesnummer
+```
+
+```{python}
+for i in range(len(responses_flykesnummer)):
+    name = responses_flykesnummer[i].get("fylkesnavn")
+    print(name)
+    
+```
+
+```{python}
+names = []
+area_dict = {}
+corr_dict = {}
+
+for i in range(len(responses_flykesnummer)):
+    name = responses_flykesnummer[i].get("fylkesnavn")
+    names.append(name)
+    
+    area_dict[name] = responses_flykesnummer[i].get("omrade")
+    
+    corr_dict[name] = responses_flykesnummer[i].get("omrade").get("coordinates")[0][0]
+    
+    #Innlandet_coordinates = Innlandet_coordinates[0]
+    #Innlandet_coordinates = Innlandet_coordinates[0]
+    #Innlandet_coordinates
+    
+    
+    
+```
+
+```{python}
+corr_dict
+```
+
+```{python}
+names
+```
+
+```{python}
+corr_dict.get(names[0])
+```
+
+```{python}
+len(corr_dict.get(names[0]))
+```
+
+```{python}
+
+
+x_dict = {}
+y_dict = {}
+
+for n in range(len(names)):
+    
+    x_corr = []
+    y_corr = []
+    
+    for x in range(len(corr_dict.get(names[n]))):
+        
+        for y in range(len(corr_dict.get(names[n])[x])):
+            
+            x_corr.append(corr_dict.get(names[n])[x][0])
+            y_corr.append(corr_dict.get(names[n])[x][1])
+    
+    x_dict[names[n]] = x_corr
+    y_dict[names[n]] = y_corr
+
+```
+
+```{python}
+x_dict
+```
+
+```{python}
+y_dict
+```
+
+```{python}
+x_dict.get("Oslo")
+```
+
+```{python}
+y_dict.get("Oslo")
+```
+
+```{python}
+import matplotlib.pyplot as plt
+
+
+fig = plt.figure(figsize=(30, 20))
+
+colors = ['red', 'orange', 'yellow', 'forestgreen', 'cyan', 'lime', 'navy', 'blue', 'purple', 'violet', 'deeppink']
+
+for n in range(len(names)):
+    
+    x = x_dict.get(names[n])
+    y = y_dict.get(names[n])
+    c = colors[n]
+    
+    plt.plot(x, y, color = c, label = names[n])
+
+plt.legend(title = 'Fylke', title_fontsize = 30, loc = 'lower right', prop = {'size': 20})
+plt.title(label = 'Fylker Norge', fontdict = {'fontsize': 40}, pad = 20.0)
+plt.show()
+
+
+```
+
+```{python}
+
+```
