@@ -184,5 +184,139 @@ plt.show()
 ```
 
 ```{python}
+x_dict.get("Oslo").sort()
+x_dict.get("Oslo")
+```
+
+```{python}
+all_x_corr = []
+all_y_corr = []
+
+for n in range(len(names)):
+    all_x_corr.extend(x_dict.get(names[n]))
+    all_y_corr.extend(y_dict.get(names[n]))
+
+all_x_corr.sort()
+all_y_corr.sort()
+```
+
+```{python}
+x_min = min(all_x_corr)
+x_min
+```
+
+```{python}
+x_max = max(all_x_corr)
+x_max
+```
+
+```{python}
+y_min = min(all_y_corr)
+y_min
+```
+
+```{python}
+y_max = max(all_y_corr)
+y_max
+```
+
+```{python}
+import random
+x_ran = random.uniform(x_min,x_max)
+y_ran = random.uniform(y_min,y_max)
+print('X = ' + str(x_ran) + '\nY = ' + str(y_ran))
+```
+
+# Illustrasjonskart
+https://ws.geonorge.no/kommuneinfo/v1/kommuner/illustrasjonskart
+
+```{python}
+response = requests.get("https://ws.geonorge.no/kommuneinfo/v1/kommuner/illustrasjonskart")
+
+if (response.status_code == 200):
+    print('Response code = ' + str(response.status_code) + '. OK')
+elif (response.status_code == 404):
+    print('Response code = ' + str(response.status_code) + '. NOT FOUND')
+```
+
+```{python}
+data = json.loads(response.text)
+data
+```
+
+```{python}
+data.get('features')[0].get('properties').get('kommunenavn')
+```
+
+```{python}
+data.get('features')[0].get('geometry').get('coordinates')[0]
+```
+
+```{python}
+# Get all names in the data
+map_names = []
+for i in range(len(data.get('features'))):
+    map_names.append(data.get('features')[i].get('properties').get('kommunenavn'))
+    
+map_names   
+```
+
+```{python}
+# Make a dict for all the "kommunene" and the coordinates
+map_dict = {}
+
+for i in range(len(data.get('features'))):
+    corr_dict = {}
+    X = []
+    Y = []
+    corr = data.get('features')[i].get('geometry').get('coordinates')[0]
+    
+    for x in range(len(corr)):
+        for y in range(len(corr[x])):
+            X.append(corr[x][0])
+            Y.append(corr[x][1])
+            
+
+    corr_dict['X'] = X
+    corr_dict['Y'] = Y
+    map_dict[map_names[i]] = corr_dict
+map_dict
+```
+
+```{python}
+print('Enter "kommunenavn":')
+name = input()
+print('Kommune: ' + name)
+```
+
+```{python}
+if (name.capitalize() in map_dict):
+    print('GOOOD')
+else:
+    print('BAAAD')
+```
+
+```{python}
+to_plot = map_dict.get(name.capitalize())
+to_plot
+```
+
+```{python}
+fig = plt.figure(figsize=(30, 20))
+
+x = to_plot.get('X')
+y = to_plot.get('Y')
+
+plt.plot(x, y, color = c, label = name.capitalize())
+
+lbl = 'Kommune du ville se: ' + name.capitalize()
+
+#plt.legend(title = 'Vald kommune', title_fontsize = 30, loc = 'lower right', prop = {'size': 20})
+plt.title(label = lbl, fontdict = {'fontsize': 40}, pad = 20.0)
+plt.show()
+
+```
+
+```{python}
 
 ```
