@@ -481,11 +481,11 @@ to_plot_dict
 #### Test to get data from the dict
 
 ```{python}
-to_plot_dict.get(m_to_plot[0])
+to_plot_dict.get(names_to_plot[0])
 ```
 
 ```{python}
-to_plot_dict.get(m_to_plot[0]).get('X')
+to_plot_dict.get(names_to_plot[0]).get('X')
 ```
 
 ## Plot all the municipalities
