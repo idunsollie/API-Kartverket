@@ -404,6 +404,7 @@ plt.plot(x, y, color = c, label = name.capitalize())
 
 plt.legend(loc = 'lower right', prop = {'size': 20})
 plt.title(label = name.capitalize(), fontdict = {'fontsize': 40}, pad = 20.0)
+
 plt.show()
 
 ```
@@ -438,10 +439,6 @@ else:
 data = json.loads(response.text)
 data
 ```
-
-lista med namn på de vi ska plotta
-lägg till de i to_plot lista, lägg sist till den valda kommunen
-
 
 #### Get the names of all the neighbors
 
