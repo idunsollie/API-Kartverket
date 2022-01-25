@@ -12,11 +12,40 @@ jupyter:
     name: python3
 ---
 
+# Visualization of data from API " Kartverket for administrative enheter"
+
+In this notebook we will get data from the open API https://data.norge.no/dataservices/41e77491-1562-3eda-a006-f56a3064d274. The API contains data about administrative units such as counties (fylker) and municipalities (kommuner). For this API we don't need any API-key for authorization, this makes the GET-request easy. 
+
+I have chosen to do this in Python because I have never worked with API in this language. My goal is to get som data from the API and then viualize it in both text and plots. 
+
+### Postman
+First I think it's easy to check how the API looks like using Postman. Where I can find the API also has a good overview where you can try the requests, but I'm used to Postman so I have used both. 
+
+Bellow is a printscreen from Postman, and I have also added the flie to the GitHub repo.
+
+
+![postman.PNG](attachment:postman.PNG)
+
+
+### Overview API
+
+Looking at the API on the website https://ws.geonorge.no/kommuneinfo/v1/#/, we can see that this API only approve GET requests, so this is what I'm going to work with. Printscreen from the website is shown bellow. 
+
+
+![api.PNG](attachment:api.PNG)
+
+
+#### Import libaries
+
 ```{python}
 import requests
 import json
 import pandas as pd
+import matplotlib.pyplot as plt
 ```
+
+## GET request - /fylker
+First I want to see what kind of "fylker" we got in the data. Here I'm doing a GET request to the endpoint with "fylker" as path. I have also added a simple check if we get the right response code, which is 200 - OK.
 
 ```{python}
 response = requests.get("https://ws.geonorge.no/kommuneinfo/v1/fylker")
@@ -25,14 +54,19 @@ if (response.status_code == 200):
     print('Response code = ' + str(response.status_code) + '. OK')
 elif (response.status_code == 404):
     print('Response code = ' + str(response.status_code) + '. NOT FOUND')
+else:
+    print('Response code = ' + str(response.status_code))
 ```
 
-#### Using json libary, then we will get a list and not a dict. This will be easier to work with later.
+#### Save data
+Now I'm saving the response body to the varible "data". I'm using json libary, then we will get a list and not a dict. This will be easier to work with later.
 
 ```{python}
 data = json.loads(response.text)
 data
 ```
+
+As we can see we got 11 diffrent "fylker". We can also see that we have a list of dict's, just to be sure I'm going to check this by code.
 
 ```{python}
 type(data)
@@ -43,25 +77,35 @@ len(data)
 ```
 
 ```{python}
-fylke_6 = data[5]
-fylke_6
+fylke = data[0]
+fylke
 ```
 
 ```{python}
-type(fylke_6)
+type(fylke)
 ```
+
+```{python}
+len(fylke)
+```
+
+#### Get all the numbers for each "fylke"
+Next step is to make a GET request using the number of each "fylke". So first Iæm creating a empty list, then fill it with the numbers I got from the last response.
 
 ```{python}
 fylkesnummer = []
 for i in range(len(data)):
     nr = data[i].get('fylkesnummer')
     fylkesnummer.append(nr)
-    
 ```
 
 ```{python}
+# Print the numbers
 fylkesnummer
 ```
+
+## GET request - /fylker/{fylkesnummer}/omrade
+Now to get the data of the area for each "fylke" I'm going to do a GET request for each "fylke" with the number in the path. I'm doing this in a loop and adding each response to a empty list.
 
 ```{python}
 responses_flykesnummer = []
@@ -69,40 +113,51 @@ responses_flykesnummer = []
 for i in range(len(fylkesnummer)):
     
     response = requests.get('https://ws.geonorge.no/kommuneinfo/v1/fylker/' + fylkesnummer[i] + '/omrade')
+    
+    if (response.status_code != 200):
+        break
+    
     data = json.loads(response.text)
     responses_flykesnummer.append(data)
 ```
+
+#### Check how the list looks
 
 ```{python}
 responses_flykesnummer
 ```
 
+#### Try to print some data from the list of responses
+
 ```{python}
 for i in range(len(responses_flykesnummer)):
     name = responses_flykesnummer[i].get("fylkesnavn")
     print(name)
-    
 ```
 
+## Structure data from responses
+I want to plot all "fylker" using the coordinates I got from the response. To do this I first want to get the data I need and make a structure by placing it in list and dict. I'm filling these in a loop than will loop for each element in the list of responses, that is the same as the amount of "fylker".
+
 ```{python}
+# Create empty list and dict 
 names = []
-area_dict = {}
 corr_dict = {}
 
 for i in range(len(responses_flykesnummer)):
+    # Get and add name
     name = responses_flykesnummer[i].get("fylkesnavn")
     names.append(name)
     
-    area_dict[name] = responses_flykesnummer[i].get("omrade")
-    
-    corr_dict[name] = responses_flykesnummer[i].get("omrade").get("coordinates")[0][0]
-    
-    #Innlandet_coordinates = Innlandet_coordinates[0]
-    #Innlandet_coordinates = Innlandet_coordinates[0]
-    #Innlandet_coordinates
+    # Get and add coordinates, the name will be the key. Also chaning to 2D-array
+    corr_dict[name] = responses_flykesnummer[i].get("omrade").get("coordinates")[0][0] 
     
     
-    
+```
+
+#### Check how the data looks
+
+```{python}
+names
 ```
 
 ```{python}
@@ -110,39 +165,49 @@ corr_dict
 ```
 
 ```{python}
-names
-```
-
-```{python}
 corr_dict.get(names[0])
 ```
 
+#### Check that the length of the coordinates array is correct
+
 ```{python}
-len(corr_dict.get(names[0]))
+# From response
+len(responses_flykesnummer[0].get("omrade").get("coordinates")[0][0])
 ```
 
 ```{python}
+# From dict
+len(corr_dict.get(names[0]))
+```
 
+## Split coordinates
+To make the values ready to plot I want to split the X and Y coordinates, and this I have to do for each fylke. To make it easy to plot all the data in the same plot I will make on dict for X coordinates and onw for Y coordinates. Each dict will have the name of each "fylke" as key and the value will be a list of the coordinates for the spesific "fylke".
 
+```{python}
+# Create empty dict
 x_dict = {}
 y_dict = {}
 
 for n in range(len(names)):
-    
+    # List to append coordinates. This will be empty for each itteration in the loop
     x_corr = []
     y_corr = []
     
+    # Nested loop to itterate throgh the 2D array of coordinates
     for x in range(len(corr_dict.get(names[n]))):
         
         for y in range(len(corr_dict.get(names[n])[x])):
             
-            x_corr.append(corr_dict.get(names[n])[x][0])
-            y_corr.append(corr_dict.get(names[n])[x][1])
+            x_corr.append(corr_dict.get(names[n])[x][0]) # X is always in 0 index
+            y_corr.append(corr_dict.get(names[n])[x][1]) # Y is always in 0 index
     
+    # Add coordinates to dict
     x_dict[names[n]] = x_corr
     y_dict[names[n]] = y_corr
 
 ```
+
+#### Check how the data looks
 
 ```{python}
 x_dict
@@ -152,6 +217,8 @@ x_dict
 y_dict
 ```
 
+#### Get one element from each dict
+
 ```{python}
 x_dict.get("Oslo")
 ```
@@ -160,12 +227,13 @@ x_dict.get("Oslo")
 y_dict.get("Oslo")
 ```
 
+## Plot all counties
+Here I will plot in a loop and for each iterration I will get the coordinates for that spesific countie by getting it from the dict using the name as a key.
+
 ```{python}
-import matplotlib.pyplot as plt
-
-
+# Set up figure
 fig = plt.figure(figsize=(30, 20))
-
+# List of colors, one for each countie
 colors = ['red', 'orange', 'yellow', 'forestgreen', 'cyan', 'lime', 'navy', 'blue', 'purple', 'violet', 'deeppink']
 
 for n in range(len(names)):
@@ -176,59 +244,21 @@ for n in range(len(names)):
     
     plt.plot(x, y, color = c, label = names[n])
 
-plt.legend(title = 'Fylke', title_fontsize = 30, loc = 'lower right', prop = {'size': 20})
-plt.title(label = 'Fylker Norge', fontdict = {'fontsize': 40}, pad = 20.0)
+# Add legend and title to the plot
+plt.legend(title = 'Countie', title_fontsize = 30, loc = 'lower right', prop = {'size': 20})
+plt.title(label = 'Counties Norway', fontdict = {'fontsize': 40}, pad = 20.0)
 plt.show()
 
 
 ```
 
-```{python}
-x_dict.get("Oslo").sort()
-x_dict.get("Oslo")
-```
+## Result first plot
+As we can see that the plot matches the globe and not a straight map. Some of the coordinates dose not match where it is many ilands and water. 
 
-```{python}
-all_x_corr = []
-all_y_corr = []
 
-for n in range(len(names)):
-    all_x_corr.extend(x_dict.get(names[n]))
-    all_y_corr.extend(y_dict.get(names[n]))
-
-all_x_corr.sort()
-all_y_corr.sort()
-```
-
-```{python}
-x_min = min(all_x_corr)
-x_min
-```
-
-```{python}
-x_max = max(all_x_corr)
-x_max
-```
-
-```{python}
-y_min = min(all_y_corr)
-y_min
-```
-
-```{python}
-y_max = max(all_y_corr)
-y_max
-```
-
-```{python}
-import random
-x_ran = random.uniform(x_min,x_max)
-y_ran = random.uniform(y_min,y_max)
-print('X = ' + str(x_ran) + '\nY = ' + str(y_ran))
-```
-
-# Illustrasjonskart
-https://ws.geonorge.no/kommuneinfo/v1/kommuner/illustrasjonskart
+## GET request - /kommuner/Illustrasjonskart
+Now I want to plot a choosen municipality from input. To get the coordinates of the municipality I'm using
+'/kommuner/Illustrasjonskart' as path. 
 
 ```{python}
 response = requests.get("https://ws.geonorge.no/kommuneinfo/v1/kommuner/illustrasjonskart")
@@ -237,51 +267,106 @@ if (response.status_code == 200):
     print('Response code = ' + str(response.status_code) + '. OK')
 elif (response.status_code == 404):
     print('Response code = ' + str(response.status_code) + '. NOT FOUND')
+else:
+    print('Response code = ' + str(response.status_code))
 ```
+
+#### Check response
+Here is where Postman is handy, there it's easier for me to see how the data looks and what kind of objects it contains.
 
 ```{python}
 data = json.loads(response.text)
 data
 ```
 
+#### Try to get data from the response
+
 ```{python}
 data.get('features')[0].get('properties').get('kommunenavn')
+```
+
+```{python}
+data.get('features')[0].get('properties').get('kommunenummer')
 ```
 
 ```{python}
 data.get('features')[0].get('geometry').get('coordinates')[0]
 ```
 
+#### Get all names of the municipalities
+Same approch as before.
+
 ```{python}
-# Get all names in the data
 map_names = []
+
 for i in range(len(data.get('features'))):
     map_names.append(data.get('features')[i].get('properties').get('kommunenavn'))
     
-map_names   
+map_names
 ```
 
+#### Make a dict of the names and the number for the municipality
+This one we will use later when we are going to plot more than one municipality.
+
 ```{python}
-# Make a dict for all the "kommunene" and the coordinates
+# map_names = []
+kommune_nr = {}
+for i in range(len(map_names)):
+
+    kommune_nr[map_names[i]] = data.get('features')[i].get('properties').get('kommunenummer')
+    
+kommune_nr   
+```
+
+#### Test that we get the number of the municipality in the dict
+
+```{python}
+kommune_nr[map_names[4]]
+```
+
+#### Get coordinates for each municipality
+I will again use a dict to structure the data before I plot it. Here I will have map_dict that hase the name as key, the value will be a dict with two lists and the number for the municipality. This means that for example the key 'Ålesund' is pointing to a new dict that contais one list with X coordinates, one list with Y coordinates, and the number for 'Ålesund'.
+
+A visulation of the structure is shown bellow.
+
+
+![dict.PNG](attachment:dict.PNG)
+
+```{python}
+# Create empty map dict
 map_dict = {}
 
 for i in range(len(data.get('features'))):
-    corr_dict = {}
+    # Empty dict and lists that will be updated for each itteration
+    info_dict = {}
     X = []
     Y = []
+    
+    # Get the coordinates for each municipality
     corr = data.get('features')[i].get('geometry').get('coordinates')[0]
     
+    # Append the X and Y into the lists
     for x in range(len(corr)):
         for y in range(len(corr[x])):
             X.append(corr[x][0])
             Y.append(corr[x][1])
             
+    # Add list to dict
+    info_dict['X'] = X
+    info_dict['Y'] = Y
+    # Add 'kommunenummer' to dict
+    info_dict['nr'] = kommune_nr[map_names[i]]
+    # Add dict to dict
+    map_dict[map_names[i]] = info_dict
+```
 
-    corr_dict['X'] = X
-    corr_dict['Y'] = Y
-    map_dict[map_names[i]] = corr_dict
+#### Check the data
+
+```{python}
 map_dict
 ```
+
+### Get input
 
 ```{python}
 print('Enter "kommunenavn":')
@@ -289,17 +374,24 @@ name = input()
 print('Kommune: ' + name)
 ```
 
-```{python}
-if (name.capitalize() in map_dict):
-    print('GOOOD')
-else:
-    print('BAAAD')
-```
+#### Check if the name is inside the dict
 
 ```{python}
-to_plot = map_dict.get(name.capitalize())
+if (name.capitalize() in map_dict):
+    print('The municipality exist')
+else:
+    print('The municipality does not exist')
+```
+
+#### Get the coordinates for the choosen municipality
+
+```{python}
+to_plot = map_dict.get(name.capitalize()) # Make sure the key matches with uppercase one the first letter
 to_plot
 ```
+
+## Plot municipality
+Same approch as last plot.
 
 ```{python}
 fig = plt.figure(figsize=(30, 20))
@@ -315,6 +407,113 @@ plt.title(label = name.capitalize(), fontdict = {'fontsize': 40}, pad = 20.0)
 plt.show()
 
 ```
+
+## Plot municipality with the neighbor municipalities
+Now we want to plot the choosen municipality togheter with the neighbor municipalities. To do this we will use the number for the municipality and find the neighbors.
+
+#### Get the number of the municipality
+
+```{python}
+m_nr = kommune_nr[name.capitalize()]
+m_nr
+```
+
+## GET request - /kommuner/{kommunenummer}/nabokommuner
+I'm using '/kommuner/{kommunenummer}/nabokommunert' as path to get the neighbor municipalities.
+
+```{python}
+response = requests.get('https://ws.geonorge.no/kommuneinfo/v1/kommuner/' + m_nr + '/nabokommuner')
+
+if (response.status_code == 200):
+    print('Response code = ' + str(response.status_code) + '. OK')
+elif (response.status_code == 404):
+    print('Response code = ' + str(response.status_code) + '. NOT FOUND')
+else:
+    print('Response code = ' + str(response.status_code))
+```
+
+#### Check the data
+
+```{python}
+data = json.loads(response.text)
+data
+```
+
+lista med namn på de vi ska plotta
+lägg till de i to_plot lista, lägg sist till den valda kommunen
+
+
+#### Get the names of all the neighbors
+
+```{python}
+neighbors = []
+for i in range(len(data)):
+    neighbors.append(data[i].get('kommunenavn'))
+```
+
+```{python}
+neighbors
+```
+
+#### Make a new list that contains the neighbors and the choosen municipality
+
+```{python}
+names_to_plot = neighbors
+neighbors.append(name.capitalize())
+names_to_plot
+```
+
+#### Make a dict of all that contains the coordinates 
+
+```{python}
+to_plot_dict = {}
+
+for i in range(len(names_to_plot)):
+    to_plot_dict[names_to_plot[i]] = map_dict.get(names_to_plot[i])
+```
+
+#### Check the dict
+
+```{python}
+to_plot_dict
+```
+
+#### Test to get data from the dict
+
+```{python}
+to_plot_dict.get(m_to_plot[0])
+```
+
+```{python}
+to_plot_dict.get(m_to_plot[0]).get('X')
+```
+
+## Plot all the municipalities
+
+```{python}
+# Set up figure
+fig = plt.figure(figsize=(30, 20))
+# List of colors, one for each countie
+colors = ['red', 'orange', 'yellow', 'forestgreen', 'cyan', 'lime', 'navy', 'blue', 'purple', 'violet', 'deeppink']
+
+for n in range(len(names_to_plot)):
+    
+    x = to_plot_dict.get(names_to_plot[n]).get('X')
+    y = to_plot_dict.get(names_to_plot[n]).get('Y')
+    c = colors[n]
+    
+    plt.plot(x, y, color = c, label = names_to_plot[n])
+
+# Add legend and title to the plot
+plt.legend(title = 'Neighbors ' + names_to_plot[-1] , title_fontsize = 30, loc = 'lower right', prop = {'size': 20})
+plt.title(label = 'Municipalities', fontdict = {'fontsize': 40}, pad = 20.0)
+plt.show()
+```
+
+# Summary
+This can be used in some application where you want to plot the diffrent counties in Norway. This will also be updated if the coordinates are changed. It possible to set up so it will draw new plow for each time the GET request is executed.
+
+It's also possible to coninue and add more functions and plots.
 
 ```{python}
 
