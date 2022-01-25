@@ -510,7 +510,7 @@ plt.show()
 # Summary
 This can be used in some application where you want to plot the diffrent counties in Norway. This will also be updated if the coordinates are changed. It possible to set up so it will draw new plow for each time the GET request is executed.
 
-It's also possible to coninue and add more functions and plots.
+It's also possible to coninue and add more functions and plots, it's also possible to add more details in the plots.
 
 ```{python}
 
