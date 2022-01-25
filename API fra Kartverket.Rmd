@@ -309,10 +309,9 @@ y = to_plot.get('Y')
 
 plt.plot(x, y, color = c, label = name.capitalize())
 
-lbl = 'Kommune du ville se: ' + name.capitalize()
 
-#plt.legend(title = 'Vald kommune', title_fontsize = 30, loc = 'lower right', prop = {'size': 20})
-plt.title(label = lbl, fontdict = {'fontsize': 40}, pad = 20.0)
+plt.legend(loc = 'lower right', prop = {'size': 20})
+plt.title(label = name.capitalize(), fontdict = {'fontsize': 40}, pad = 20.0)
 plt.show()
 
 ```
